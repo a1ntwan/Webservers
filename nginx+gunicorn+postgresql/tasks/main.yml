@@ -1,0 +1,15 @@
+---
+- name: 'install and configure Postgresql'
+  import_tasks: postgres.yml
+  when:
+    - inventory_hostname in groups['postgresql']
+
+- name: 'install and configure gunicorn'
+  import_tasks: django.yml
+  when:
+    - inventory_hostname in groups['gunicorn']
+
+- name: 'install and configure nginx'
+  import_tasks: nginx.yml
+  when:
+    - inventory_hostname in groups['nginx']

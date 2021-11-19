@@ -1,0 +1,14 @@
+all:
+  children:
+    gunicorn:
+      hosts:
+        unicorn: 
+          ansible_host: 10.10.10.21
+    postgresql:
+      hosts:
+        psql: 
+          ansible_host: 10.10.10.22
+    nginx:
+      hosts:
+        nginx: 
+          ansible_host: 10.10.10.23

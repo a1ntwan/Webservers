@@ -1,0 +1,14 @@
+---
+# handlers file for nginx+gunicorn+postgresql
+- name: restart-gunicorn
+  systemd:
+    name: gunicorn
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+
+- name: restart-nginx
+  systemd:
+    name: nginx
+    state: restarted
+    enabled: yes

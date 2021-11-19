@@ -1,0 +1,92 @@
+---
+- name: '[RHEL] add Postgres repo and install'
+  block:
+    - yum:
+        name: 'https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm'
+        state: present
+        update_cache: yes
+        disable_gpg_check: yes
+        validate_certs: no
+    - yum:
+        name: '{{ item }}'
+        state: present
+        update_cache: yes
+        disable_gpg_check: yes
+      loop:
+        - postgresql{{ postgres_version }}-server
+        - postgresql{{ postgres_version }}-contrib
+        - centos-release-scl-rh
+        - postgresql{{ postgres_version }}-devel
+        - libpqxx-devel
+        - python3-pip
+        - python3-devel
+    - shell:
+        cmd: /usr/pgsql-{{ postgres_version }}/bin/postgresql-{{ postgres_version }}-setup initdb
+      ignore_errors: true
+
+  when: ansible_distribution_file_variety == 'RedHat
+
+- name: '[Debian/Ubuntu] add Postgres repo and install'
+  block:
+    - shell:
+        cmd: |
+          echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list &&
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+    - apt:
+        name:
+          - postgresql-{{ postgres_version }}
+          - postgresql-contrib-{{ postgres_version }}
+          - libpq-dev
+          - python3-pip
+          - python3-dev
+        state: present
+        update_cache: yes
+
+  when: ansible_distribution_file_variety == 'Debian'
+
+- name: 'install psycopg2'
+  pip:
+    name: '{{ item }}'
+    state: latest
+  vars:
+    ansible_python_interpreter: /bin/python3
+  loop:
+    - pip
+    - setuptools
+    - wheel
+    - psycopg2
+
+- name: '[RHEL] restart-postgres-rhel'
+  systemd:
+    name: postgresql-{{ postgres_version }}
+    state: restarted
+    enabled: yes
+  when: ansible_distribution_file_variety == 'RedHat'
+
+- name: '[Debian] restart-postgres-debian'
+  systemd:
+    name: postgresql
+    state: restarted
+    enabled: yes
+  when: ansible_distribution_file_variety == 'Debian'
+
+- name: 'create database'
+  postgresql_db:
+    name: '{{ db_name }}'
+  become_user: postgres
+  become: yes
+  vars:
+    ansible_python_interpreter: /bin/python3
+
+- name: 'create user'
+  postgresql_user:
+    db: '{{ db_name }}'
+    name: '{{ db_user }}'
+    password: '{{ db_password }}'
+    priv: ALL
+    state: present
+    role_attr_flags: NOSUPERUSER,NOCREATEDB
+  become: yes
+  become_user: postgres
+  vars:
+    ansible_python_interpreter: /bin/python3

@@ -1,0 +1,222 @@
+---
+- name: '[RHEL] install python3.9'
+  block:
+
+    - name: '[RHEL] create user www-data'
+      user:
+        name: www-data
+        create_home: no
+        system: yes
+
+    - name: '[RHEL] install python3.9 dependencies'
+      yum:
+        name:
+          - gcc
+          - openssl-devel
+          - bzip2-devel
+          - libffi-devel
+        update_cache: yes
+        state: latest
+      tags:
+        - install
+
+    - name: '[RHEL] download and unarchive sqlite for python3.9'
+      unarchive:
+        src: 'https://www.sqlite.org/2021/sqlite-autoconf-3360000.tar.gz'
+        dest: /usr/src/
+        remote_src: yes
+        validate_certs: no
+      tags:
+        - install
+
+    - name: '[RHEL] configure sqlite for python3.9'
+      shell:
+        cmd: './configure --prefix=/usr/'
+        chdir: /usr/src/sqlite-autoconf-3360000
+      tags:
+        - install
+
+    - name: '[RHEL] make sqlite for python3.9'
+      make:
+        chdir: /usr/src/sqlite-autoconf-3360000
+        target: install
+        file: /usr/src/sqlite-autoconf-3360000/Makefile
+      tags:
+        - install
+
+    - name: '[RHEL] delete .tar.gz archive'
+      file:
+        path: /usr/src/sqlite-autoconf-3360000.tar.gz
+        state: absent
+      tags:
+        - install
+
+    - name: '[RHEL] download and unarchive python3.9'
+      unarchive:
+        src: 'https://www.python.org/ftp/python/3.9.9/Python-3.9.9.tar.xz'
+        dest: /usr/src/
+        remote_src: yes
+      tags:
+        - install
+
+    - name: '[RHEL] configure python3.9'
+      shell:
+        cmd: './configure --enable-optimizations --prefix=/usr/'
+        chdir: /usr/src/Python-3.9.9
+      tags:
+        - install
+
+    - name: '[RHEL] make python3.9'
+      make:
+        chdir: /usr/src/Python-3.9.9
+        target: altinstall
+        file: /usr/src/Python-3.9.9/Makefile
+      tags:
+        - install
+
+    - name: '[RHEL] delete .tgz archive'
+      file:
+        path: /usr/src/Python-3.9.9.tgz
+        state: absent
+      tags:
+        - install
+
+    - name: '[RHEL] install other dependencies'
+      yum:
+        name:
+          - "@Development tools"
+          - "@Development Libraries"
+          - epel-release
+          - python3-devel
+          - python-virtualenv
+          - postgresql-devel
+          - libpqxx-devel
+          - tcl-devel
+          - tk-devel
+          - python3-tkinter
+        state: latest
+        update_cache: yes
+      tags:
+         - install
+
+  when:
+     - ansible_distribution_file_variety == 'RedHat'
+
+- name: '[Debian] install python3.9'
+  block:
+
+    - name: '[Debian] install python3.9 dependencies'
+      apt:
+        name: '{{ item }}'
+        state: latest
+        update_cache: yes
+      loop:
+        - python3-pip
+        - python3-apt
+        - software-properties-common
+        - libpq-dev
+      tags:
+        - install
+
+    - name: '[Debian] add repo for python3.9'
+      apt_repository:
+        repo: ppa:deadsnakes/ppa
+      tags:
+        - install
+
+    - name: '[Debian] install python3.9'
+      apt:
+        name: '{{ item }}'
+        state: latest
+        update_cache: yes
+      loop:
+        - build-essential
+        - python3.9
+        - python3.9-dev
+        - python3-virtualenv
+        - python3-pip
+        - tcl-dev
+        - tk-dev
+        - python3-tk
+        - git
+        - virtualenv
+      tags:
+         - install
+
+  when:
+    - ansible_distribution_file_variety == 'Debian'
+
+- name: 'create django dir'
+  file:
+    path: '{{ django_path }}'
+    state: directory
+  tags:
+    - django
+
+- name: 'install django'
+  pip:
+    name: '{{ item }}'
+    state: latest
+    virtualenv: '{{ django_path }}/env'
+    virtualenv_command: virtualenv
+    virtualenv_python: /bin/python3.9
+  loop:
+    - pip
+    - virtualenv
+    - wheel
+    - django
+    - psycopg2
+    - gunicorn
+  tags:
+    - django
+
+- name: Install a django project
+  shell:
+    cmd: '{{ django_path }}/env/bin/django-admin startproject {{ project_name }}'
+    chdir: '{{ django_path }}/'
+  run_once: true
+  tags:
+    - django
+
+- name: 'create django app'
+  shell:
+    cmd: '{{ django_path }}/env/bin/python3.9 {{ django_path }}/{{ project_name }}/manage.py startapp website'
+    chdir: '{{ django_path }}/{{ project_name }}'
+  run_once: true
+  tags:
+    - web
+
+- name: 'copy djago settings.py'
+  template:
+    src: settings.py.j2
+    dest: '{{ django_path }}/{{ project_name }}/{{ project_name }}/settings.py'
+
+- name: 'calculate possible workers'
+  shell:
+    cmd: echo "$(( $(/usr/bin/lscpu | /usr/bin/grep "^CPU(s):" | /usr/bin/awk '{print$2}')*2+1 ))"
+  register: workers
+  tags:
+    - web
+
+#- name: 'run website'
+#  shell:
+#    cmd: '{{ django_path }}/env/bin/python3 {{ django_path }}/{{ project_name }}/manage.py runserver 0.0.0.0:8000'
+#  tags:
+#    - web
+
+- name: 'create gunicorn log file'
+  file:
+    path: /var/log/gunicorn.log
+    owner: www-data
+    group: www-data
+    state: touch
+  tags:
+    - web
+
+- name: 'configure Gunicorn'
+  template:
+    src: gunicorn.service.j2
+    dest: /etc/systemd/system/gunicorn.service
+  notify: restart-gunicorn
+  tags:
+    - web
