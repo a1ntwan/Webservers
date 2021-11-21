@@ -1,0 +1,133 @@
+---
+- block:
+
+    - name: '[RHEL] install mariadb'
+      yum:
+        name: '{{ item }}'
+        state: latest
+        update_cache: yes
+      loop:
+        - python3-pip
+        - python3-devel
+        - mariadb
+        - mariadb-server
+
+    - name: '[RHEL] install PyMySQL'
+      pip:
+        name: '{{ item }}'
+        state: latest
+      vars:
+        ansible_python_interpreter: /bin/python3
+      loop:
+        - pip
+        - setuptools
+        - wheel
+        - PyMySQL
+
+    - name: '[RHEL] edit mysql config'
+      lineinfile:
+        path: /etc/my.cnf
+        line: '{{ item }}'
+      run_once: true
+      loop:
+        - "bind-address            = {{ hostvars['mysql']['ansible_host'] }}"
+        - "mysqlx-bind-address     = {{ hostvars['mysql']['ansible_host'] }}"
+
+    - name: '[RHEL] restart mariadb'
+      systemd:
+        name: mariadb
+        state: restarted
+        enabled: yes
+
+    - name: '[RHEL] create test db'
+      mysql_db:
+        name: '{{ db_name }}'
+        state: present
+      vars:
+        ansible_python_interpreter: /bin/python3
+
+    - name: '[RHEL] create user with all database privileges'
+      mysql_user:
+        name: '{{ db_user }}'
+        host: '{{ item }}'
+        password: '{{ db_password }}'
+        priv: '*.*:ALL'
+        state: present
+      loop:
+        - 127.0.0.1
+        - localhost
+        - "{{ hostvars['php']['ansible_host'] }}"
+        - "{{ hostvars['mysql']['ansible_host'] }}"
+      vars:
+        ansible_python_interpreter: /bin/python3
+
+  when: ansible_distribution_file_variety == 'RedHat'
+
+- block:
+
+    - name: '[Debian] install mysql'
+      apt:
+        name: '{{ item }}'
+        state: latest
+        update_cache: yes
+      loop:
+        - python3-pip
+        - mysql-server
+        - mysql-client
+
+    - name: '[Debian] install PyMySQL'
+      pip:
+        name: '{{ item }}'
+        state: latest
+      vars:
+        ansible_python_interpreter: /bin/python3
+      loop:
+        - pip
+        - setuptools
+        - wheel
+        - PyMySQL
+
+    - name: '[Debian] edit mysql config'
+      lineinfile:
+        path: /etc/mysql/mysql.conf.d/mysqld.cnf
+        regexp: '{{ item.from }}'
+        line: '{{ item.to }}'
+      run_once: true
+      loop:
+        - { from: "bind-address", to: "bind-address            = {{ hostvars['mysql']['ansible_host'] }}" }
+        - { from: "mysqlx-bind-address", to: "mysqlx-bind-address     = {{ hostvars['mysql']['ansible_host'] }}" }
+
+    - name: '[Debian] restart mysql'
+      systemd:
+        name: mysql
+        state: restarted
+        enabled: yes
+
+    - name: '[Debian] create test db'
+      mysql_db:
+        login_user: root
+        name: '{{ db_name }}'
+        state: present
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+      vars:
+        ansible_python_interpreter: /bin/python3
+
+    - name: '[Debian] create user with all database privileges'
+      mysql_user:
+        login_user: root
+        name: '{{ db_user }}'
+        host: '{{ item }}'
+        password: '{{ db_password }}'
+        priv: '*.*:ALL'
+        state: present
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+      loop:
+        - 127.0.0.1
+        - localhost
+        - "{{ hostvars['php']['ansible_host'] }}"
+        - "{{ hostvars['mysql']['ansible_host'] }}"
+      vars:
+        ansible_python_interpreter: /bin/python3
+
+
+  when: ansible_distribution_file_variety == 'Debian'

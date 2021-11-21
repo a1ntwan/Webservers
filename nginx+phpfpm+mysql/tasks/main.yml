@@ -1,0 +1,15 @@
+---
+- name: 'install and configure MySQL/MariaDB'
+  import_tasks: mysql.yml
+  when:
+    - inventory_hostname in groups['db']
+    -
+- name: 'install and configure gunicorn'
+  import_tasks: php.yml
+  when:
+    - inventory_hostname in groups['php-fpm']
+
+- name: 'install and configure nginx'
+  import_tasks: nginx.yml
+  when:
+    - inventory_hostname in groups['php-fpm']
