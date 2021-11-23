@@ -1,0 +1,8 @@
+---
+- name: Install and configure Nginx + Wordpress + MySQL
+  hosts: all
+  become: yes
+
+  roles:
+
+    - nginx+wordpress+mysql

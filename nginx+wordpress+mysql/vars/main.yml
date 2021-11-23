@@ -1,0 +1,25 @@
+---
+django_path: /var/www/django
+static_content: /var/www/html/static 
+project_name: django_test
+app_name: website
+
+csr_ca:
+  country_name: RU
+  organization_name: Home
+  email_address: test@test.ru
+  common_name: Nginx-CA
+  days: 365
+
+server_crt:
+  country_name: RU
+  organization_name: Home
+  email_address: test@test.ru
+  common_name: Nginx-Server
+  days: 365
+
+nginx_domain_name: nginx.example.net
+
+db_user:  user
+db_password: qwerty
+db_name: test_db

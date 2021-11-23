@@ -1,0 +1,22 @@
+---
+- name: restart php-fpm rh
+  systemd:
+    name: php-fpm
+    state: restarted
+    enabled: yes
+  listen: restart-php
+  ignore_errors: true
+
+- name: restart php-fpm debian
+  systemd:
+    name: php8.0-fpm
+    state: restarted
+    enabled: yes
+  listen: restart-php
+  ignore_errors: true
+
+- name: restart-nginx
+  systemd:
+    name: nginx
+    state: restarted
+    enabled: yes
