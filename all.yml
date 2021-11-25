@@ -1,0 +1,8 @@
+---
+- name: Install and configure Nginx + Node.js + MondoDB
+  hosts: all
+  become: yes
+
+  roles:
+
+    - nginx+nodejs+mongodb

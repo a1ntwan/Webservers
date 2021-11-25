@@ -1,0 +1,15 @@
+---
+- name: 'install and configure MongoDB'
+  import_tasks: mongo.yml
+  when:
+    - inventory_hostname in groups['db']
+
+- name: 'install and configure Node.js'
+  import_tasks: nodejs.yml
+  when:
+    - inventory_hostname in groups['nodejs']
+
+- name: 'install and configure reverse-proxy'
+  import_tasks: nginx.yml
+  when:
+    - inventory_hostname in groups['proxy']

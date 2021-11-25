@@ -1,0 +1,7 @@
+---
+git_owner: mehulmpt
+git_repo: node-mongodb-todo
+project_name: test_project
+app_name: myapp
+static_content: assets
+nginx_domain_name: nginx.example.net

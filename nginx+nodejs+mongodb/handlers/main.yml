@@ -1,0 +1,19 @@
+---
+- name: restart-mongo
+  systemd:
+    name: mongod
+    state: restarted
+    enabled: yes
+
+- name: start-pm2
+  systemd:
+    name: pm2.service@script.js.service
+    state: started
+    enabled: yes
+    daemon_reload: yes
+
+- name: restart-nginx
+  systemd:
+    name: nginx
+    state: restarted
+    enabled: yes

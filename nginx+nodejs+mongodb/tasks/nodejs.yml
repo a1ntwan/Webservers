@@ -1,0 +1,132 @@
+---
+- block:
+
+  - name: '[RHEL] install npm and git'
+    yum:
+      name: '{{ item }}'
+      state: latest
+      update_cache: yes
+    loop:
+      - npm
+      - git
+    tags:
+      - install
+
+  - name: '[RHEL] install npm packages'
+    npm:
+      name: '{{ item }}'
+      global: yes
+    loop:
+      - semver
+      - yarn
+      - pm2
+      - n
+    tags:
+      - install
+
+  - name: '[RHEL] update node to latest'
+    shell:
+      cmd: /usr/bin/n 16
+    tags:
+      - install
+
+  - name: '[RHEL] create project dir'
+    file:
+      path: /var/www/html/{{ project_name }}
+      state: directory
+    tags:
+      - install
+
+  - name: '[RHEL] clone test node project'
+    git:
+      repo: https://github.com/{{ git_owner }}/{{ git_repo }}.git
+      dest: /var/www/html/{{ project_name }}
+      update: no
+
+  - name: '[RHEL] change code to run app not only on localhost'
+    lineinfile:
+      path: /var/www/html/{{ project_name }}/script.js
+      regexp: '{{ item.from }}'
+      line: '{{ item.to }}'
+    loop:
+      - { from: "app.listen", to: "app.listen(8080, '{{ ansible_host }}', () => {" }
+      - { from: "mongoose.connect", to: "mongoose.connect('mongodb://{{ hostvars['mongo']['ansible_host'] }}/firstmongo')" }
+
+  - name: '[RHEL] yarn'
+    yarn:
+      path: /var/www/html/{{ project_name }}
+      state: latest
+
+  - name: '[RHEL] copy pm2 service file'
+    template:
+      src: pm2.service.j2
+      dest: /etc/systemd/system/pm2.service@script.js.service
+    notify: start-pm2
+      
+  when: ansible_distribution_file_variety == 'RedHat'
+
+- block:
+
+  - name: '[Debian] install npm and git'
+    apt:
+      name: '{{ item }}'
+      state: latest
+      update_cache: yes
+    loop:
+      - npm
+      - git
+    tags:
+      - install
+
+  - name: '[Debian] install npm packages'
+    npm:
+      name: '{{ item }}'
+      global: yes
+    loop:
+      - semver
+      - yarn
+      - pm2
+      - n
+    tags:
+      - install
+
+  - name: '[Debian] update node to latest'
+    shell:
+      cmd: /usr/local/lib/node_modules/n/bin/n 17
+    tags:
+      - install
+
+  - name: '[Debian] create project dir'
+    file:
+      path: /var/www/html/{{ project_name }}
+      state: directory
+    tags:
+      - install
+
+  - name: '[Debian] clone test node project'
+    git:
+      repo: https://github.com/{{ git_owner }}/{{ git_repo }}.git
+      dest: /var/www/html/{{ project_name }}
+      update: no
+
+  - name: '[Debian] change code to run app not only on localhost'
+    lineinfile:
+      path: /var/www/html/{{ project_name }}/script.js
+      regexp: '{{ item.from }}'
+      line: '{{ item.to }}'
+    loop:
+      - { from: "app.listen", to: "app.listen(8080, '{{ ansible_host }}', () => {" }
+      - { from: "mongoose.connect", to: "mongoose.connect('mongodb://{{ hostvars['mongo']['ansible_host'] }}/firstmongo')" }
+
+  - name: '[Debian] yarn'
+    yarn:
+      path: /var/www/html/{{ project_name }}
+      state: latest
+
+  - name: '[Debian] copy pm2 service file'
+    template:
+      src: pm2.service.j2
+      dest: /etc/systemd/system/pm2.service@script.js.service
+    notify: start-pm2
+
+  when: ansible_distribution_file_variety == 'Debian'

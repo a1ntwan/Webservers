@@ -1,0 +1,57 @@
+---
+- block:
+
+  - name: '[RHEL] add repo'
+    lineinfile:
+      create: yes
+      path: /etc/yum.repos.d/mongodb-org-5.0.repo
+      line: |
+        [mongodb-org-5.0]
+        name=MongoDB Repository
+        baseurl=https://repo.mongodb.org/yum/redhat/$releasever/mongodb-org/5.0/x86_64/
+        gpgcheck=1
+        enabled=1
+        gpgkey=https://www.mongodb.org/static/pgp/server-5.0.asc
+
+  - name: '[RHEL] install MongoDB'
+    yum:
+      name: mongodb-org
+      state: latest
+      update_cache: yes
+
+  - name: '[RHEL] edit config'
+    lineinfile:
+      path: /etc/mongod.conf
+      regexp: 'bindIp'
+      line: "  bindIp: {{ hostvars['mongo']['ansible_host'] }}"
+    notify: restart-mongo
+
+  when: ansible_distribution_file_variety == 'RedHat'
+
+- block:
+
+  - name: '[Debian] import MongoDB public pgp key'
+    apt_key:
+      url: https://www.mongodb.org/static/pgp/server-5.0.asc
+      state: present
+
+  - name: '[Debian] add MongoDB repo'
+    apt_repository:
+      repo: deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse
+      state: present
+      filename: mongodb-org-5.0
+
+  - name: '[Debian] install MongoDB'
+    apt:
+      name: mongodb-org
+      state: latest
+      update_cache: yes
+
+  - name: '[Debian] edit config'
+    lineinfile:
+      path: /etc/mongod.conf
+      regexp: 'bindIp'
+      line: "  bindIp: {{ hostvars['mongo']['ansible_host'] }}"
+    notify: restart-mongo
+
+  when: ansible_distribution_file_variety == 'Debian'
