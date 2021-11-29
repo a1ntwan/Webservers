@@ -24,7 +24,7 @@
         cmd: /usr/pgsql-{{ postgres_version }}/bin/postgresql-{{ postgres_version }}-setup initdb
       ignore_errors: true
 
-  when: ansible_distribution_file_variety == 'RedHat
+  when: ansible_distribution_file_variety == 'RedHat'
 
 - name: '[Debian/Ubuntu] add Postgres repo and install'
   block:
